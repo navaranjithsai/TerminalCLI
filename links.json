@@ -1,0 +1,9 @@
+{
+    "links": {
+        "Main": "https://example.com",
+        "project": "https://project.example.com",
+        "project2": "https://project2.example.com",
+        "lab": "https://lab.example.com",
+        "test": "https://test.example.com"
+    }
+}

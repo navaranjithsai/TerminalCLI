@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Functional Terminal Interface</title>
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+			background-color: black;
+			font-family: Arial, sans-serif;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 100vh;
+		}
+
+		.terminal-box {
+			width: 95%;
+			max-width: 1200px;
+			height: 95%;
+			border: 4px solid #0f395e;
+			border-radius: 8px;
+			padding: 10px;
+			overflow: auto;
+		}
+
+		.terminal {
+			background-color: black;
+			padding: 10px;
+			height: 100%;
+			font-family: monospace;
+			white-space: pre-wrap;
+			color: white;
+			border-radius: 10px;
+			overflow-y: auto;
+			overflow-x: hidden;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="terminal-box">
+		<div class="terminal" id="term"></div>
+	</div>
+
+	<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+	<script src="https://unpkg.com/jquery.terminal/js/jquery.terminal.min.js"></script>
+	<link href="https://unpkg.com/jquery.terminal/css/jquery.terminal.min.css" rel="stylesheet" />
+
+	<script>
+		// Defining links object for static way to extract urls.
+		// var urls = {
+		// 	'links': {
+		// 		'project': 'project.example.com',
+		// 		'lab': "lab.example.com",
+		// 		'test': "test.example.com"
+		// 	}
+		// };
+
+		// Files variable to direct file names and paths with contents in it.
+		var files = [
+			{
+				name: "readme.md",
+				path: "/readme.md",
+				content: null,
+			},
+			{
+				name: "links.json",
+				path: "/links.json",
+				downloadName: "project_links.json",
+				content: null,
+				flag: false
+			},
+			{
+				name: "file.txt",
+				path: "/file.txt",
+				content: null,
+			},
+		];
+
+		// files.forEach(file => {
+		//     fetch(file.path)
+		//         .then(response => response.text())
+		//         .then(data => {
+		//             file.content = data;
+		//         });
+		// });
+
+		var commands = {
+			// 'ls': function () {
+			// 	this.echo('Available commands: ' + Object.keys(commands).join(', '));
+			// },
+			'ls': function () {
+				var output = "";
+				// output += "/\n";
+				// output += "projects/\n";
+				files.forEach((file) => {
+					output += file.path + " " + "\n";
+				});
+				this.echo(output);
+			},
+			'help': function () {
+				this.echo("Available commands:");
+				this.echo("ls - List all available directories and files inside the path");
+				this.echo("help - Display this help message, If you get Lost!");
+				this.echo("list - List all available commands");
+				// this.echo("cd - Change directory (not implemented)");
+				this.echo("cat - Concatenate and display file content");
+				this.echo("projects - Display project links");
+				this.echo("add - Add a new project link");
+				this.echo("open - Open files links");
+				this.echo("exit - Terminate the session and redirect to the homepage");
+				this.echo('Ctrl+D - To exit or cancel command');
+			},
+			'list': function () {
+				this.echo('Available commands: ' + Object.keys(commands).join(', '));
+			},
+			// 'cd': function () {
+			// 	this.echo('Command "cd" not implemented');
+			// },
+			'cat': function (fileName) {
+				const file = files.find((f) => f.name === fileName);
+				if (file) {
+					if (file.content === null) {
+						fetch(file.path)
+							.then((response) => response.text())
+							.then((data) => {
+								file.content = data;
+								this.echo(file.content);
+							});
+					} else {
+						this.echo(file.content);
+					}
+				} else {
+					this.echo(`No file found with name: ${fileName}`);
+				}
+			},
+			'projects': function () {
+				const file = files.find((f) => f.name === "links.json");
+				if (file) {
+					if (file.content === null || file.flag) {
+						fetch(file.path)
+							.then((response) => response.json())
+							.then((data) => {
+								file.content = data;
+								file.flag = false;
+								//   console.log("Fetched.. links.json"); // For debugging is it fetched or not!
+								if (file.content && file.content.links) {
+									const projectLinks = Object.keys(file.content.links)
+										.map((name) => `- ${name}: ${file.content.links[name]}`)
+										.join("\n");
+									this.echo("Available Project Links:\n" + projectLinks);
+								} else {
+									this.echo("No links available");
+								}
+							});
+					} else {
+						if (file.content && file.content.links) {
+							const projectLinks = Object.keys(file.content.links)
+								.map((name) => `- ${name}: ${file.content.links[name]}`)
+								.join("\n");
+							this.echo("Available Project Links:\n" + projectLinks);
+						} else {
+							this.echo("No links available");
+						}
+					}
+				} else {
+					this.echo("No links.json file found");
+				}
+			},
+			'add': function () {
+				this.echo("Please provide the name and URL separated by a space:");
+				var self = this;
+				this.push(function (command) {
+					var parts = command.split(" ");
+					if (parts.length < 2) {
+						self.echo(
+							"Invalid input. Please provide the name and URL separated by a space."
+						);
+						return;
+					}
+					var name = parts[0];
+					var url = parts.slice(1).join(" ");
+
+					// Send a request to the server-side script
+					fetch("server.php", {
+						method: "POST",
+						mode: "no-cors",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({ name: name, url: url }),
+					})
+						.then(() => {
+							// Assume the URL was added successfully
+							self.echo("URL added: " + name + " -> " + url);
+							const file = files.find((f) => f.name === "links.json");
+							if (file) {
+								file.flag = true;
+							}
+						})
+						.catch((error) => {
+							// If there was an error, assume the URL was not added
+							self.echo("Failed to add URL: " + error.message);
+						})
+						.finally(() => {
+							self.pop();
+						});
+				});
+			},
+			// Open function to open files links
+			'open': function (fileName) {
+				const file = files.find((f) => f.name === fileName);
+				if (file) {
+					var url = window.location.href;
+					if (url.endsWith('/')) {
+						url = url.slice(0, -1);  // remove the trailing slash
+					}
+					window.open(url + file.path, '_blank');
+				} else {
+					this.echo('File not found: ' + fileName);
+				}
+			},
+			'exit': function () {
+				this.echo('Terminating Session.... Goodbye!');
+				this.echo('Cleaning up...');
+
+				// this.destroy(); // This function will destroy the terminal and can't reuse untill refresh
+				// this.exit(); // exit function is not available by default
+				setTimeout(() => {
+					this.clear();
+					// Redirecting to Project page
+					setTimeout(function () {
+						window.location.href = 'https://project.example.com/';
+					}, 1000);
+				}, 2000);
+			}
+		};
+		var terminal = $("#term").terminal(
+			function (command, terminal) {
+				command = command.trim();
+				if (command.length > 0) {
+					const [cmd, ...args] = command.split(" ");
+					if (commands[cmd]) {
+						commands[cmd].apply(terminal, args);
+					} else {
+						terminal.echo("Command not found: " + command);
+					}
+				}
+			}, {
+			greetings: 'Welcome To Terminal, type help or list to show commands',
+			name: 'project_terminal',
+			// height: '100%',
+			color: 'white',
+			background: 'black',
+			fontFamily: 'monospace',
+			borderRadius: '10px',
+			padding: '10px',
+			prompt: "root@user > ",
+			onInit: function () {
+				this.echo('Terminal initialized');
+			}
+		});
+
+	</script>
+</body>
+
+</html>
