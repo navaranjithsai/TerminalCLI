@@ -21,3 +21,7 @@ Type help command to see the list of available commands.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+
+
+
+![Visitors](https://moe-counter.glitch.me/get/@navaranjithsaiTerminalCLI) [Note]: # This will work as @name is unique so the db counts on each refresh and save.
